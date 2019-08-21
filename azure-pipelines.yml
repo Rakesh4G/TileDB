@@ -12,6 +12,11 @@ jobs:
         imageName: 'ubuntu-16.04'
         CXX: g++
         TILEDB_TOOLS: ON
+        #TILEDB_FORCE_BUILD_DEPS: ON
+        # try to work around azure/openssl config bug. doesn't work:
+        #
+        #   https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.html
+        # SYSTEM: x86_64-whatever-linux2
       linux_s3:
         imageName: 'ubuntu-16.04'
         TILEDB_S3: ON
@@ -32,6 +37,7 @@ jobs:
       linux_serialization:
         imageName: 'ubuntu-16.04'
         TILEDB_SERIALIZATION: ON
+        TILEDB_S3: ON
         CXX: g++
 
   pool:

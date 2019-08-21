@@ -356,12 +356,6 @@ if (CMAKE_BUILD_TYPE MATCHES "Coverage")
   )
 endif()
 
-if (NOT WIN32)
-  # On Linux, must explicitly link -lpthread -ldl in order for static linking
-  # to libzstd or libcurl to work.
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
-endif()
-
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
@@ -409,6 +403,12 @@ if(APPLE)
   endif()
 endif()
 
+# On Linux, must explicitly link -lpthread -ldl in order for static linking
+# to libzstd and tbb.
+if (NOT WIN32)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
+endif()
+
 # Copy over dependency info (e.g. include directories) to the core objects.
 target_compile_definitions(TILEDB_CORE_OBJECTS
   PRIVATE
@@ -434,30 +434,47 @@ if (TILEDB_STATIC)
   include(TileDBCommon)
 
   # Helper to generate CMake code
-  macro(append_dep_lib LIB_TARGET)
-    if (TARGET ${LIB_TARGET})
-      get_installed_location(LOC ${LIB_TARGET})
+  macro(append_dep_lib APPEND_LIB)
+    if (TARGET ${APPEND_LIB})
+      get_installed_location(TARGET_LOC ${APPEND_LIB})
+      get_target_property(TARGET_LIBS ${APPEND_LIB} INTERFACE_LINK_LIBRARIES)
+
       string(CONCAT TILEDB_STATIC_DEP_STRING
         "${TILEDB_STATIC_DEP_STRING}"
-        "if (NOT TARGET ${LIB_TARGET})\n"
-        "  add_library(${LIB_TARGET} UNKNOWN IMPORTED)\n"
-        "  set_target_properties(${LIB_TARGET} PROPERTIES IMPORTED_LOCATION ${LOC})\n"
+        "if (NOT TARGET ${APPEND_LIB})\n"
+        "  add_library(${APPEND_LIB} UNKNOWN IMPORTED)\n"
+        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION ${TARGET_LOC})\n"
+      )
+
+      if (TARGET_LIBS AND ("${APPEND_LIB}" MATCHES "CURL"))
+        string(CONCAT TILEDB_STATIC_DEP_STRING
+          "${TILEDB_STATIC_DEP_STRING}"
+          "  set_target_properties(${APPEND_LIB} PROPERTIES INTERFACE_LINK_LIBRARIES \"${TARGET_LIBS}\")\n"
+        )
+      endif()
+
+      string(CONCAT TILEDB_STATIC_DEP_STRING
+        "${TILEDB_STATIC_DEP_STRING}"
         "endif()\n"
       )
+
     endif()
   endmacro()
 
   append_dep_lib(Bzip2::Bzip2)
-  append_dep_lib(CURL::libcurl)
   append_dep_lib(LZ4::LZ4)
   append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
+  # CURL wants 'ZLIB' not 'Zlib', and cmake enforces case in usage downstream (generator expression?)
+  # (yes, *creating* the all-uppercase target here works fine, because it's cmake)
+  append_dep_lib(ZLIB::ZLIB)
   append_dep_lib(Zstd::Zstd)
   append_dep_lib(CapnProto::capnp)
   append_dep_lib(CapnProto::capnp-json)
   append_dep_lib(CapnProto::kj)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
+  append_dep_lib(CURL::libcurl)
   append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
   append_dep_lib(AWSSDK::aws-cpp-sdk-core)
   append_dep_lib(AWSSDK::aws-c-event-stream)

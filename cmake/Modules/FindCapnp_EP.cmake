@@ -74,7 +74,7 @@ if (NOT CAPNP_FOUND)
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
-      PATCH_COMMAND 
+      PATCH_COMMAND
         ${GIT_EXECUTABLE} cherry-pick fdbf035619
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE

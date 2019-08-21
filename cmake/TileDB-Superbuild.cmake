@@ -74,6 +74,10 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
 
+if (NOT WIN32)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
+endif()
+
 if (TILEDB_SERIALIZATION)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCapnp_EP.cmake)
 endif()

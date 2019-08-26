@@ -38,12 +38,12 @@ include(TileDBCommon)
 set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 # If the EP was built, it will install the CURLConfig.cmake file, which we
-# can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
-# modules.
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
+# can use with find_package.
 
 # First try the CMake-provided find script.
-find_package(CURL QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH} CONFIG)
+find_package(CURL
+  HINTS "${CURL_PATHS}"
+  QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH} CONFIG)
 
 # Next try finding the superbuild external project
 if (NOT CURL_FOUND)
@@ -70,39 +70,56 @@ endif()
 
 if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Curl as an external project")
-  if (TARGET ep_openssl)
-    set(DEPENDS ep_openssl)
-  endif()
-
-
-  if(DEFINED OPENSSL_ROOT_DIR)
-    find_package(OpenSSL_EP REQUIRED)
-    list(APPEND OPENSSL_LIBRARIES dl pthread)
-    set(WITH_SSL "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES}")
-  endif()
-
   if (WIN32)
     set(WITH_SSL "-DCMAKE_USE_WINSSL=ON")
+    ExternalProject_Add(ep_curl
+      PREFIX "externals"
+      URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
+      URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
+      CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_SHARED_LIBS=OFF
+        -DCURL_DISABLE_LDAP=ON
+        -DCURL_DISABLE_LDAPS=ON
+        -DCURL_STATICLIB=ON
+        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
+        "${WITH_SSL}"
+        "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
+      UPDATE_COMMAND ""
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE
+    )
+
+  else()
+
+    if (TARGET ep_openssl)
+      set(DEPENDS ep_openssl)
+    endif()
+
+    if(DEFINED OPENSSL_ROOT_DIR)
+      set(WITH_SSL "--with-ssl=${OPENSSL_ROOT_DIR}")
+    endif()
+
+    ExternalProject_Add(ep_curl
+      PREFIX "externals"
+      URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
+      URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
+      CONFIGURE_COMMAND
+        ${TILEDB_EP_BASE}/src/ep_curl/configure
+          --prefix=${TILEDB_EP_INSTALL_PREFIX}
+          --enable-optimize
+          --enable-shared=no
+          --disable-ldap
+          --with-pic=yes
+          ${WITH_SSL}
+      BUILD_IN_SOURCE TRUE
+      BUILD_COMMAND $(MAKE)
+      INSTALL_COMMAND $(MAKE) install
+      DEPENDS ${DEPENDS}
+    )
   endif()
 
-  ExternalProject_Add(ep_curl
-    PREFIX "externals"
-    URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
-    URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
-    CMAKE_ARGS
-      -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-      -DCMAKE_BUILD_TYPE=Release
-      -DBUILD_SHARED_LIBS=OFF
-      -DCURL_DISABLE_LDAP=ON
-      -DCURL_DISABLE_LDAPS=ON
-      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
-      "${WITH_SSL}"
-      "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
-    UPDATE_COMMAND ""
-    LOG_DOWNLOAD TRUE
-    LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE
-    DEPENDS ${DEPENDS}
-  )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_curl)
   list(APPEND FORWARD_EP_CMAKE_ARGS
     -DTILEDB_CURL_EP_BUILT=TRUE
@@ -114,7 +131,6 @@ if (CURL_FOUND)
 
   # If the libcurl target is missing this is an older version of curl found, don't attempt to use cmake target
   if (NOT TARGET CURL::libcurl)
-    message(WARNING "cmake libcurl target not found, static linking against libcurl will result in missing symbols")
     add_library(CURL::libcurl UNKNOWN IMPORTED)
     set_target_properties(CURL::libcurl PROPERTIES
       IMPORTED_LOCATION "${CURL_LIBRARIES}"

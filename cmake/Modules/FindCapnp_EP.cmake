@@ -33,12 +33,14 @@
 include(TileDBCommon)
 
 # If the EP was built, it will install the CapnProtoConfig.cmake file, which we
-# can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
-# modules.
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
+# can use with find_package.
 
 # First try the CMake find module.
-find_package(CapnProto QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
+find_package(CapnProto
+  QUIET
+  PATHS ${TILEDB_EP_INSTALL_PREFIX}
+  {${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
 set(CAPNP_FOUND ${CapnProto_FOUND})
 
 # needed for cherry-pick
@@ -46,6 +48,7 @@ find_package(Git REQUIRED)
 
 # If not found, add it as an external project
 if (NOT CAPNP_FOUND)
+  message(STATUS "HERE!")
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Capnp as an external project")
 

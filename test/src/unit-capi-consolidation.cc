@@ -1857,7 +1857,7 @@ void ConsolidationFx::read_dense_vector() {
 
   // Preparation
   uint64_t subarray[] = {1, 410};
-  int a[410];
+  uint64_t a[410];
   uint64_t a_size = sizeof(a);
 
   // Submit query
@@ -1920,7 +1920,7 @@ void ConsolidationFx::read_dense_vector_with_gaps() {
 
   // Preparation
   uint64_t subarray[] = {1, 410};
-  int a[410];
+  uint64_t a[410];
   uint64_t a_size = sizeof(a);
 
   // Submit query
